@@ -66,23 +66,38 @@ class AnonymousPatterns(val global : Global) extends Plugin {
          override def transform(tree : Tree) : Tree = tree match {
             case Apply(
                Ident(clazz),
-               List(
-                  Apply(
+               Apply(
+                  Ident(Arrow),
+                  List(Bind(accessor1, Ident(termNames.WILDCARD)), bind1)) :: rest) ⇒
+
+               val accessorsBinders = rest flatMap {
+                  case Apply(
                      Ident(Arrow),
-                     List(Bind(accessor, Ident(termNames.WILDCARD)), bind)))) ⇒
+                     List(Bind(accessor, Ident(termNames.WILDCARD)), bind)) ⇒
+
+                     List((accessor, transform(bind)))
+                  case _ ⇒
+                     error("Invalid anonymous pattern")
+                     Nil
+               }
+               val accessors = accessor1 :: accessorsBinders.map(_._1)
+               val binders = transform(bind1) :: accessorsBinders.map(_._2)
+
+               val accessed = accessors.map(accessor ⇒
+                  q"clazz.${accessor.toTermName}")
 
                val extractorName = freshTerm()
                val extractor =
                   q"""
                    private object $extractorName {
                       def unapply(clazz : ${clazz.toTypeName}) =
-                         Some(clazz.${accessor.toTermName})
+                         Some((..$accessed))
                    }
                    """
                stack.push(extractor)
                Apply(
                   Ident(extractorName),
-                  List(bind))
+                  binders)
             case _ ⇒ super.transform(tree)
          }
       }
