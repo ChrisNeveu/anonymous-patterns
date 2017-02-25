@@ -1,0 +1,4 @@
+<plugin>
+  <name>anonymous-patterns</name>
+  <classname>anonymouspatterns.AnonymousPatterns</classname>
+</plugin>

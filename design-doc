@@ -1,0 +1,19 @@
+case Foo(a->one, b->two) => ...
+
+compiles down to:
+
+object $$Foo$$Named_Extractor {
+   def unapply(foo : Foo) = (foo.a, foo.b)
+}
+case $$Foo$$Named_Extractor(one, two) => ...
+
+The symbol should be configurable so the user can specify ~> or --> or whatever instead of ->
+
+The following can be used to ignore all arguments.
+
+case Foo(_ -> _) => ...
+
+
+I should be able to group all the extractors together into one auto-generated file and just import that file to consolidate duplicates and avoid reinstantiating the extractors. The only concern here is ensuring that the error messaging still points to the original location.
+
+Maybe name this anonymous-patterns?
