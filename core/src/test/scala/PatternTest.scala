@@ -12,4 +12,7 @@ object PatternTest {
    Bar("", Foo(5, true)) match {
       case Bar(d -> Foo(a -> i, b -> t)) ⇒ (i, t)
    }
+   Foo(5, true) match {
+      case Foo(_ -> _) ⇒ "Foo"
+   }
 }

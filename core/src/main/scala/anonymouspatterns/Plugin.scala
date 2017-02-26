@@ -30,6 +30,8 @@ class AnonymousPatterns(val global : Global) extends Plugin {
          freshTermName("anonymous_pattern")(currentFreshNameCreator)
       def freshType() : TypeName =
          freshTypeName("anonymous_pattern")(currentFreshNameCreator)
+      def newExtractor(clazz : Name) : TermName =
+         freshTermName("anonymous_pattern$" + clazz.toString)(currentFreshNameCreator)
 
       class BaseTransformer(unit : CompilationUnit) extends TypingTransformer(unit) {
 
@@ -38,8 +40,6 @@ class AnonymousPatterns(val global : Global) extends Plugin {
          override def transform(tree : Tree) : Tree = tree match {
             case Match(sel, cases) ⇒
                val casesExtractors = cases map {
-                  /*case CaseDef(Apply(clazz, List(Apply(Ident(Arrow), List(Bind(accessor, Ident(termNames.WILDCARD)), bind)))), guard, body) ⇒
-                     (CaseDef(Apply(clazz, List(bind)), guard, body), None)*/
                   case CaseDef(pat, guard, body) ⇒
                      val newPat = patternTransformer.transform(pat)
                      val extractors = patternTransformer.stack.toList
@@ -86,7 +86,7 @@ class AnonymousPatterns(val global : Global) extends Plugin {
                val accessed = accessors.map(accessor ⇒
                   q"clazz.${accessor.toTermName}")
 
-               val extractorName = freshTerm()
+               val extractorName = newExtractor(clazz)
                val extractor =
                   q"""
                    private object $extractorName {
@@ -98,6 +98,23 @@ class AnonymousPatterns(val global : Global) extends Plugin {
                Apply(
                   Ident(extractorName),
                   binders)
+            case Apply(
+               Ident(clazz),
+               List(Apply(
+                  Ident(Arrow),
+                  List(Ident(termNames.WILDCARD), Ident(termNames.WILDCARD))))) ⇒
+
+               val extractorName = newExtractor(clazz)
+               val extractor =
+                  q"""
+                   private object $extractorName {
+                      def unapply(clazz : ${clazz.toTypeName}) : Boolean = true
+                   }
+                   """
+               stack.push(extractor)
+               Apply(
+                  Ident(extractorName),
+                  Nil)
             case _ ⇒ super.transform(tree)
          }
       }
